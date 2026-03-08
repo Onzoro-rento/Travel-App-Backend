@@ -1,0 +1,1129 @@
+openapi: "3.0.3"
+info:
+  title: 旅行予定管理アプリ API
+  description: |
+    旅行予定管理アプリのバックエンド REST API。
+    Google OAuth によるユーザー認証、旅行プロジェクトの CRUD、候補スポットの投票、タイムライン管理を提供します。
+  version: "1.0.0"
+  contact:
+    name: API Support
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://api-staging.example.com/v1
+    description: Staging
+
+tags:
+  - name: Auth
+    description: 認証・トークン管理
+  - name: Users
+    description: ユーザー情報
+  - name: Trips
+    description: 旅行プロジェクト
+  - name: Members
+    description: 旅行メンバー管理
+  - name: Candidates
+    description: 候補スポット・リアクション
+  - name: Itinerary
+    description: タイムライン管理
+  - name: Spots
+    description: スポット検索
+
+security:
+  - BearerAuth: []
+
+# ─────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ── Auth ──
+    GoogleAuthRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: Google OAuth authorization code
+          example: "4/0AX4XfWh..."
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          example: 3600
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: "#/components/schemas/User"
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+          example: 3600
+        token_type:
+          type: string
+          example: Bearer
+
+    # ── User ──
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: 田中 太郎
+        email:
+          type: string
+          format: email
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+        avatar_url:
+          type: string
+          format: uri
+
+    # ── Trip ──
+    Trip:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: 沖縄旅行 2026夏
+        cover_photo_url:
+          type: string
+          format: uri
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        invite_code:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TripCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        cover_photo_url:
+          type: string
+          format: uri
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    TripUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        cover_photo_url:
+          type: string
+          format: uri
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    TripListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        cover_photo_url:
+          type: string
+          format: uri
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        my_role:
+          type: string
+          enum: [owner, editor, viewer]
+        member_count:
+          type: integer
+
+    TripListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Member ──
+    MemberSummary:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+
+    Member:
+      type: object
+      properties:
+        trip_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+        created_at:
+          type: string
+          format: date-time
+
+    JoinRequest:
+      type: object
+      required: [invite_code]
+      properties:
+        invite_code:
+          type: string
+
+    RoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+
+    # ── Spot ──
+    Spot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        google_place_id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+
+    # ── Candidate ──
+    CandidateSpot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        trip_id:
+          type: string
+          format: uuid
+        spot:
+          $ref: "#/components/schemas/Spot"
+        added_by:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        status:
+          type: string
+          enum: [in_pool, in_timeline]
+        reactions_summary:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            "👍": 3
+            "😍": 1
+        my_reaction:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CandidateCreate:
+      type: object
+      required: [google_place_id]
+      properties:
+        google_place_id:
+          type: string
+
+    CandidateStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [in_pool, in_timeline]
+
+    # ── Reaction ──
+    Reaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        candidate_spot_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        emoji_type:
+          type: string
+          example: "👍"
+        created_at:
+          type: string
+          format: date-time
+
+    ReactionRequest:
+      type: object
+      required: [emoji_type]
+      properties:
+        emoji_type:
+          type: string
+
+    # ── Itinerary ──
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sort_order:
+          type: string
+        spot:
+          $ref: "#/components/schemas/Spot"
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ItineraryResponse:
+      type: object
+      properties:
+        trip_id:
+          type: string
+          format: uuid
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              day_number:
+                type: integer
+              date:
+                type: string
+                format: date
+              activities:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
+    ActivityCreate:
+      type: object
+      required: [day_number, spot_id, sort_order]
+      properties:
+        day_number:
+          type: integer
+          minimum: 1
+        spot_id:
+          type: string
+          format: uuid
+        sort_order:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        memo:
+          type: string
+
+    ActivityUpdate:
+      type: object
+      properties:
+        day_number:
+          type: integer
+          minimum: 1
+        spot_id:
+          type: string
+          format: uuid
+        sort_order:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        memo:
+          type: string
+
+    ReorderRequest:
+      type: object
+      required: [operations]
+      properties:
+        operations:
+          type: array
+          items:
+            type: object
+            required: [activity_id, sort_order, day_number]
+            properties:
+              activity_id:
+                type: string
+                format: uuid
+              sort_order:
+                type: string
+              day_number:
+                type: integer
+
+    ReorderResponse:
+      type: object
+      properties:
+        updated_count:
+          type: integer
+
+    # ── Common ──
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total_count:
+          type: integer
+        total_pages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: リクエストの入力値が不正です。
+            details:
+              type: array
+              nullable: true
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  reason:
+                    type: string
+
+  responses:
+    BadRequest:
+      description: リクエストパラメータ不正
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: 認証エラー
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: 権限不足
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: リソース未存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: 一意制約違反
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+# ─────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────
+paths:
+  # ── Auth ──
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Google OAuth ログイン
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleAuthRequest"
+      responses:
+        "200":
+          description: 認証成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: トークンリフレッシュ
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: リフレッシュ成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Users ──
+  /users/me:
+    get:
+      tags: [Users]
+      summary: 自分のプロフィール取得
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: 自分のプロフィール更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Trips ──
+  /trips:
+    post:
+      tags: [Trips]
+      summary: 旅行作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripCreate"
+      responses:
+        "201":
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [Trips]
+      summary: 参加中の旅行一覧
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /trips/{tripId}:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Trips]
+      summary: 旅行詳細取得
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Trips]
+      summary: 旅行情報更新
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Trips]
+      summary: 旅行削除
+      description: "必要ロール: owner"
+      responses:
+        "204":
+          description: 削除成功
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Members ──
+  /trips/{tripId}/join:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Members]
+      summary: 招待コードで旅行に参加
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRequest"
+      responses:
+        "201":
+          description: 参加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          description: 無効な招待コード
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /trips/{tripId}/members:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Members]
+      summary: メンバー一覧取得
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MemberSummary"
+
+  /trips/{tripId}/members/{userId}:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Members]
+      summary: メンバーのロール変更
+      description: "必要ロール: owner"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Members]
+      summary: メンバー削除
+      description: "必要ロール: owner（自分自身は削除不可）"
+      responses:
+        "204":
+          description: 削除成功
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Candidates ──
+  /trips/{tripId}/candidates:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Candidates]
+      summary: 候補スポット追加
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateCreate"
+      responses:
+        "201":
+          description: 追加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateSpot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      tags: [Candidates]
+      summary: 候補スポット一覧取得
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [in_pool, in_timeline]
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CandidateSpot"
+
+  /trips/{tripId}/candidates/{candidateId}:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Candidates]
+      summary: 候補スポットのステータス変更
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateStatusUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateSpot"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Candidates]
+      summary: 候補スポット削除
+      description: "必要ロール: owner, editor"
+      responses:
+        "204":
+          description: 削除成功
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Reactions ──
+  /trips/{tripId}/candidates/{candidateId}/reactions:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Candidates]
+      summary: リアクション登録・更新
+      description: 同じ emoji_type が存在する場合は冪等（上書き）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionRequest"
+      responses:
+        "200":
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reaction"
+    delete:
+      tags: [Candidates]
+      summary: リアクション削除
+      parameters:
+        - name: emoji_type
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: 削除成功
+
+  # ── Itinerary ──
+  /trips/{tripId}/itinerary:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Itinerary]
+      summary: タイムライン取得（日ごとグルーピング）
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItineraryResponse"
+    post:
+      tags: [Itinerary]
+      summary: アクティビティ追加
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityCreate"
+      responses:
+        "201":
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /trips/{tripId}/itinerary/{activityId}:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: activityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Itinerary]
+      summary: アクティビティ更新
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Itinerary]
+      summary: アクティビティ削除
+      description: "必要ロール: owner, editor"
+      responses:
+        "204":
+          description: 削除成功
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /trips/{tripId}/itinerary/reorder:
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Itinerary]
+      summary: アクティビティ並べ替え（一括 sort_order 更新）
+      description: "必要ロール: owner, editor"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRequest"
+      responses:
+        "200":
+          description: 並べ替え成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Spots ──
+  /spots/search:
+    get:
+      tags: [Spots]
+      summary: Google Places スポット検索
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          example: 沖縄 カフェ
+        - name: latitude
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: longitude
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: radius
+          in: query
+          schema:
+            type: integer
+            default: 5000
+          description: 検索半径（メートル）
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Spot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"

@@ -1,0 +1,28 @@
+services:
+  # FastAPIのコンテナ設定
+  web:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ./app:/code/app  # ホットリロード用
+    env_file:
+      - .env
+    depends_on:
+      - db  # DBが立ち上がってからWebを起動する設定
+
+  # PostgreSQLのコンテナ設定
+  db:
+    image: postgres:18-alpine  # 軽量なPostgreSQLイメージ
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # コンテナを消してもデータが消えないようにする設定
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+# データを永続化（保存）するためのボリューム宣言
+volumes:
+  postgres_data:
