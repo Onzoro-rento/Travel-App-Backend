@@ -9,19 +9,25 @@ services:
     env_file:
       - .env
     depends_on:
-      - db  # DBが立ち上がってからWebを起動する設定
+      db:
+        condition: service_healthy  # DBがready状態になるまで待つ
 
   # PostgreSQLのコンテナ設定
   db:
     image: postgres:18-alpine  # 軽量なPostgreSQLイメージ
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data  # コンテナを消してもデータが消えないようにする設定
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 # データを永続化（保存）するためのボリューム宣言
 volumes:
