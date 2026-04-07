@@ -4,14 +4,12 @@ from sqlalchemy.sql import func
 
 from app.infrastructure.database import Base
 
-import uuid
-
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    google_id = Column(String(255), unique=True, nullable=False)
+    # Supabase Auth の UUID をそのまま PK として使用（JWTのsubクレームと一致）
+    id = Column(UUID(as_uuid=True), primary_key=True)
     name = Column(String(50), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     avatar_url = Column(Text, nullable=True)

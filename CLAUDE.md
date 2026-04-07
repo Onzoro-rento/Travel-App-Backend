@@ -41,18 +41,18 @@ schemas (Pydantic DTO)          infrastructure/database.py
 | Usecases | `app/usecases/` | ビジネスロジック（FastAPI に依存しない） |
 | Repositories | `app/repositories/` | データアクセスの抽象化 |
 | Models | `app/models/` | SQLAlchemy ORM エンティティ |
-| Infrastructure | `app/infrastructure/` | DB セッション管理、Google OAuth、Google Places API |
-| Config | `app/config/` | DI 定義（`dependency.py`）、環境変数（`env.py`）、JWT（`jwt.py`） |
+| Infrastructure | `app/infrastructure/` | DB セッション管理、Supabase JWT 検証、Google Places API |
+| Config | `app/config/` | DI 定義（`dependency.py`）、環境変数（`env.py`）、Supabase JWT 検証（`jwt.py`） |
 | Exceptions | `app/exceptions/` | カスタム例外クラスと FastAPI 例外ハンドラ |
 
 依存注入: FastAPI `Depends()` → Usecase コンストラクタが Repository を受け取る → Repository が `AsyncSession` を受け取る
 
 ## 技術スタック
 
-- **Python 3.14**、**FastAPI 0.113.x**、**Pydantic 2.7+**、**SQLAlchemy 2.0+**（async）
-- **PostgreSQL 18**（`psycopg2-binary` 経由）
+- **Python 3.12**、**FastAPI 0.113.x**、**Pydantic 2.7+**、**SQLAlchemy 2.0+**（async）
+- **PostgreSQL 16**（`asyncpg` 経由で非同期接続）
 - **Docker Compose** でローカル開発（サービス: `web`, `db`）
-- **JWT**（access + refresh トークン）と **Google OAuth 2.0** による認証
+- **Supabase Auth** による Google OAuth 2.0 認証。バックエンドは Supabase JWT の検証のみ行う
 
 ## データベース
 
@@ -103,5 +103,5 @@ API 仕様書: `docs/travel-app-api-spec-v1.md`
 
 - `docs/travel-app-directory-structure-v1.md` — アーキテクチャとレイヤーの責務
 - `docs/travel-app-db-design-v3-final.md` — データベーススキーマと制約
-- `docs/travel-app-api-spec-v1.md` — REST API エンドポイント仕様（24エンドポイント、7リソースカテゴリ）
+- `docs/travel-app-api-spec-v1.md` — REST API エンドポイント仕様（23エンドポイント、7リソースカテゴリ）
 - `docs/travel-app-openapi-v1.yaml` — OpenAPI 3.0 仕様
