@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from app.infrastructure.database import init_db
+from app.infrastructure.database import init_db,engine
 from fastapi import FastAPI
 
 
@@ -13,7 +13,8 @@ async def lifespan(app: FastAPI):
     
     # ③ 【終了時】サーバーを停止したときの片付け（yield の後）
     print("シャットダウンします。DBの接続を閉じます...")
-    # await close_db_connection() など
+    await engine.dispose()
+
 
 app = FastAPI(lifespan=lifespan)
 
