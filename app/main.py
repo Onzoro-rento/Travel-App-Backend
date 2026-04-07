@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from app.infrastructure.database import init_db,engine
+from app.infrastructure.database import init_db, engine
+import app.models  # noqa: F401 — モデルを Base.metadata に登録するために必要
 from fastapi import FastAPI
 
 

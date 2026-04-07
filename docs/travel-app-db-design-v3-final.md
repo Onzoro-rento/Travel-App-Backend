@@ -1,6 +1,6 @@
 
-> **Version:** 3.1（Googleログイン＆カバー写真対応版）
-> **最終更新日:** 2026-03-08
+> **Version:** 3.2（Supabase Auth対応版）
+> **最終更新日:** 2026-04-07
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### 設計方針
 
-- **認証:** パスワードカラムは持たず、OAuth プロバイダに認証を委譲。2プロバイダまでは `users` テーブルにカラム直列で対応。
+- **認証:** パスワードカラムは持たず、Supabase Auth に認証を委譲。`users.id` は Supabase Auth が発行する UUID（JWT の `sub` クレーム）と一致させ、プロバイダ情報（Google ID 等）は Supabase 側で管理する。
 - **スポット管理:** Google Places API のキャッシュとして `spots` テーブルを独立させ、候補プールとタイムラインの両方から参照。
 - **並べ替え:** タイムライン内の順序制御に辞書式順序文字列（`sort_order`）を採用し、ドラッグ＆ドロップ時の部分更新を実現。
 - **監査:** 全テーブルに `created_at`（必要に応じて `updated_at`）を付与。
@@ -42,15 +42,14 @@ erDiagram
 
 | カラム名 | データ型 | 制約 | 説明 |
 |---|---|---|---|
-| `id` | UUID | PK | ユーザーの一意なID |
-| `google_id` | VARCHAR(255) | UNIQUE, NOT NULL | GoogleのユーザーID（sub句など） |
+| `id` | UUID | PK | Supabase Auth の UUID（JWT の `sub` クレームと同一） |
 | `name` | VARCHAR(50) | NOT NULL | 表示名（Googleプロファイルから取得） |
 | `email` | VARCHAR(255) | UNIQUE, NOT NULL | メールアドレス |
 | `avatar_url` | TEXT | | アイコン画像のURL（Googleプロファイルから取得） |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | 作成日時 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | 更新日時 |
 
-> **備考:** 2つ目の OAuth プロバイダ（Apple, LINE 等）を追加する場合は `apple_id` 等のカラムを追加。3プロバイダ以上になった時点で `user_auth_providers` テーブルへの分離を検討する。
+> **備考:** Google ID などプロバイダ固有の識別子は Supabase Auth 側（`auth.users` テーブル）で管理される。バックエンドは Supabase UUID のみでユーザーを識別する。追加 OAuth プロバイダ（Apple, LINE 等）は Supabase Auth の設定で対応可能。
 
 #### `trips`（旅行プロジェクト）
 
