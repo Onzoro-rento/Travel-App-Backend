@@ -6,7 +6,6 @@ from sqlalchemy.sql import func
 
 from app.infrastructure.database import Base
 
-
 class Spot(Base):
     __tablename__ = "spots"
 

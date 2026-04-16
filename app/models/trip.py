@@ -5,8 +5,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
 from app.infrastructure.database import Base
-
-
 class Trip(Base):
     __tablename__ = "trips"
 
@@ -22,3 +20,5 @@ class Trip(Base):
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
