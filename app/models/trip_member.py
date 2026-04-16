@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
@@ -7,6 +7,13 @@ from app.infrastructure.database import Base
 
 class TripMember(Base):
     __tablename__ = "trip_members"
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner', 'editor', 'viewer')",
+            name="ck_trip_members_role",
+        ),
+    )
 
     # 複合主キー: (trip_id, user_id)
     trip_id = Column(

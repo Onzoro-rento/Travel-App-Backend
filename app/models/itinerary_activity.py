@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
@@ -9,6 +9,13 @@ from app.infrastructure.database import Base
 
 class ItineraryActivity(Base):
     __tablename__ = "itinerary_activities"
+
+    __table_args__ = (
+        CheckConstraint(
+            "day_number >= 1",
+            name="ck_itinerary_activities_day_number",
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trip_id = Column(
