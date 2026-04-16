@@ -2,16 +2,15 @@
 FROM python:3.14
 
 
-WORKDIR /code
+WORKDIR /src
+
+COPY ./requirements.txt /src/requirements.txt
 
 
-COPY ./requirements.txt /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /src/requirements.txt
 
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+COPY ./app /src/app
 
 
-COPY ./app /code/app
-
-
-CMD ["fastapi", "run", "app/main.py", "--port", "8000"]
+CMD ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]

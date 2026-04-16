@@ -5,7 +5,7 @@ services:
     ports:
       - "${PORT:-8000}:8000"
     volumes:
-      - ./app:/code/app  # ホットリロード用
+      - ./app:/src/app  # ホットリロード用
     env_file:
       - .env
     depends_on:
