@@ -1,9 +1,9 @@
 # 旅行予定管理アプリ REST API 仕様書
 
-> **Version:** 1.0
-> **最終更新日:** 2026-03-08
+> **Version:** 2.0（Supabase Auth対応版）
+> **最終更新日:** 2026-04-07
 > **ベースURL:** `https://api.example.com/v1`
-> **対応DB設計書:** v3.1
+> **対応DB設計書:** v3.2
 
 ---
 
@@ -26,77 +26,57 @@
 
 ## 2. 認証・認可
 
-### 2.1 認証フロー（Google OAuth 2.0）
+### 2.1 認証フロー（Supabase Auth + Google OAuth 2.0）
+
+認証は **Supabase Auth** に委譲します。バックエンドは JWT の検証のみを行い、Google との通信・トークン発行は一切行いません。
 
 ```
-┌────────┐     ┌────────────┐     ┌──────────┐     ┌────────┐
-│ Client │────▶│ Google     │────▶│ Google   │────▶│  API   │
-│  App   │     │ OAuth画面  │     │ (token)  │     │ Server │
-└────────┘     └────────────┘     └──────────┘     └────────┘
-    │                                                   │
-    │  1. Googleログイン画面へリダイレクト                │
-    │  2. ユーザーが認可                                 │
-    │  3. authorization_code を取得                      │
-    │  4. POST /auth/google に code を送信 ──────────────▶│
-    │                                                   │
-    │  5. サーバーが Google に code を検証                │
-    │  6. ユーザー作成 or 取得                            │
-    │  7. JWT (access_token + refresh_token) を返却 ◀────│
-    │                                                   │
-    │  8. 以降のリクエストに Authorization ヘッダ付与     │
-    └───────────────────────────────────────────────────┘
+┌────────┐     ┌──────────────┐     ┌────────┐
+│ Client │────▶│ Supabase Auth│     │  API   │
+│  App   │     │ (Google OAuth│     │ Server │
+└────────┘     │  を内部処理) │     └────────┘
+    │           └──────────────┘         │
+    │  1. Supabase SDK でGoogleログイン   │
+    │  2. Supabase が Google と通信       │
+    │  3. Supabase JWT を受け取る         │
+    │                                    │
+    │  4. POST /auth/sync ───────────────▶│
+    │     Authorization: Bearer <JWT>    │
+    │                                    │
+    │  5. JWT の署名を検証（Supabase秘密鍵）│
+    │  6. 初回ならusersテーブルにレコード作成│
+    │  7. ユーザー情報を返却 ◀────────────│
+    │                                    │
+    │  8. 以降のリクエストにも同じJWTを付与 │
+    └────────────────────────────────────┘
 ```
+
+> **JWT の検証:** Supabase プロジェクトの JWT Secret（`SUPABASE_JWT_SECRET`）を使って HS256 で検証。`sub` クレームが `users.id` に対応する。
+> **トークンリフレッシュ:** Supabase SDK がクライアント側で自動処理するため、バックエンドに refresh エンドポイントは不要。
 
 ### 2.2 認証エンドポイント
 
-#### `POST /auth/google`
+#### `POST /auth/sync`
 
-Google から取得した authorization code をサーバーに送信し、JWT を取得します。
+Supabase JWT を検証し、初回ログイン時に `users` テーブルへユーザーレコードを作成します。2回目以降はユーザー情報を返却するだけです（冪等）。
 
-**リクエスト:**
+**リクエストヘッダ:**
 
-```json
-{
-  "code": "4/0AX4XfWh..."
-}
 ```
+Authorization: Bearer <Supabase JWT>
+```
+
+**リクエストボディ:** なし
 
 **レスポンス: `200 OK`**
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "refresh_token": "dGhpcyBpcyBhIHJlZnJl...",
-  "expires_in": 3600,
-  "token_type": "Bearer",
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "田中 太郎",
-    "email": "tanaka@example.com",
-    "avatar_url": "https://lh3.googleusercontent.com/..."
-  }
-}
-```
-
-#### `POST /auth/refresh`
-
-期限切れの access_token を再発行します。
-
-**リクエスト:**
-
-```json
-{
-  "refresh_token": "dGhpcyBpcyBhIHJlZnJl..."
-}
-```
-
-**レスポンス: `200 OK`**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "expires_in": 3600,
-  "token_type": "Bearer"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "田中 太郎",
+  "email": "tanaka@example.com",
+  "avatar_url": "https://lh3.googleusercontent.com/...",
+  "created_at": "2026-01-15T10:00:00+09:00"
 }
 ```
 
@@ -167,30 +147,29 @@ Authorization: Bearer <access_token>
 
 | # | メソッド | パス | 説明 | 認証 |
 |---|---|---|---|---|
-| 1 | POST | `/auth/google` | Google OAuth ログイン | 不要 |
-| 2 | POST | `/auth/refresh` | トークンリフレッシュ | 不要 |
-| 3 | GET | `/users/me` | 自分のプロフィール取得 | 必要 |
-| 4 | PATCH | `/users/me` | 自分のプロフィール更新 | 必要 |
-| 5 | POST | `/trips` | 旅行作成 | 必要 |
-| 6 | GET | `/trips` | 参加中の旅行一覧取得 | 必要 |
-| 7 | GET | `/trips/:tripId` | 旅行詳細取得 | 必要 |
-| 8 | PATCH | `/trips/:tripId` | 旅行情報更新 | 必要 |
-| 9 | DELETE | `/trips/:tripId` | 旅行削除 | 必要 |
-| 10 | POST | `/trips/:tripId/join` | 招待コードで旅行に参加 | 必要 |
-| 11 | GET | `/trips/:tripId/members` | メンバー一覧取得 | 必要 |
-| 12 | PATCH | `/trips/:tripId/members/:userId` | メンバーのロール変更 | 必要 |
-| 13 | DELETE | `/trips/:tripId/members/:userId` | メンバー削除 | 必要 |
-| 14 | POST | `/trips/:tripId/candidates` | 候補スポット追加 | 必要 |
-| 15 | GET | `/trips/:tripId/candidates` | 候補スポット一覧取得 | 必要 |
-| 16 | PATCH | `/trips/:tripId/candidates/:candidateId` | 候補スポットのステータス変更 | 必要 |
-| 17 | DELETE | `/trips/:tripId/candidates/:candidateId` | 候補スポット削除 | 必要 |
-| 18 | PUT | `/trips/:tripId/candidates/:candidateId/reactions` | リアクション登録・更新 | 必要 |
-| 19 | DELETE | `/trips/:tripId/candidates/:candidateId/reactions` | リアクション削除 | 必要 |
-| 20 | GET | `/trips/:tripId/itinerary` | タイムライン取得 | 必要 |
-| 21 | POST | `/trips/:tripId/itinerary` | アクティビティ追加 | 必要 |
-| 22 | PATCH | `/trips/:tripId/itinerary/:activityId` | アクティビティ更新 | 必要 |
-| 23 | DELETE | `/trips/:tripId/itinerary/:activityId` | アクティビティ削除 | 必要 |
-| 24 | GET | `/spots/search` | Google Places スポット検索 | 必要 |
+| 1 | POST | `/auth/sync` | 初回ログイン時のユーザー同期 | 必要（Supabase JWT） |
+| 2 | GET | `/users/me` | 自分のプロフィール取得 | 必要 |
+| 3 | PATCH | `/users/me` | 自分のプロフィール更新 | 必要 |
+| 4 | POST | `/trips` | 旅行作成 | 必要 |
+| 5 | GET | `/trips` | 参加中の旅行一覧取得 | 必要 |
+| 6 | GET | `/trips/:tripId` | 旅行詳細取得 | 必要 |
+| 7 | PATCH | `/trips/:tripId` | 旅行情報更新 | 必要 |
+| 8 | DELETE | `/trips/:tripId` | 旅行削除 | 必要 |
+| 9 | POST | `/trips/:tripId/join` | 招待コードで旅行に参加 | 必要 |
+| 10 | GET | `/trips/:tripId/members` | メンバー一覧取得 | 必要 |
+| 11 | PATCH | `/trips/:tripId/members/:userId` | メンバーのロール変更 | 必要 |
+| 12 | DELETE | `/trips/:tripId/members/:userId` | メンバー削除 | 必要 |
+| 13 | POST | `/trips/:tripId/candidates` | 候補スポット追加 | 必要 |
+| 14 | GET | `/trips/:tripId/candidates` | 候補スポット一覧取得 | 必要 |
+| 15 | PATCH | `/trips/:tripId/candidates/:candidateId` | 候補スポットのステータス変更 | 必要 |
+| 16 | DELETE | `/trips/:tripId/candidates/:candidateId` | 候補スポット削除 | 必要 |
+| 17 | PUT | `/trips/:tripId/candidates/:candidateId/reactions` | リアクション登録・更新 | 必要 |
+| 18 | DELETE | `/trips/:tripId/candidates/:candidateId/reactions` | リアクション削除 | 必要 |
+| 19 | GET | `/trips/:tripId/itinerary` | タイムライン取得 | 必要 |
+| 20 | POST | `/trips/:tripId/itinerary` | アクティビティ追加 | 必要 |
+| 21 | PATCH | `/trips/:tripId/itinerary/:activityId` | アクティビティ更新 | 必要 |
+| 22 | DELETE | `/trips/:tripId/itinerary/:activityId` | アクティビティ削除 | 必要 |
+| 23 | GET | `/spots/search` | Google Places スポット検索 | 必要 |
 
 ---
 
