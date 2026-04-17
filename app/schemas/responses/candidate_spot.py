@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
 from app.schemas.responses.spot import SpotResponse
@@ -18,7 +18,7 @@ class CandidateSpotResponse(BaseModel):
     spot: SpotResponse
     added_by: UUID
     status: str
-    reactions_summary: dict[str, int]
+    reactions_summary: dict[str, int] = Field(default_factory=dict)
     created_at: datetime
 
     model_config = {"from_attributes": True}

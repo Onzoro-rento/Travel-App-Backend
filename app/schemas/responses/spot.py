@@ -4,7 +4,7 @@ from uuid import UUID
 
 class SpotResponse(BaseModel):
     id: UUID
-    google_place_id: str
+    google_place_id: str|None
     name: str
     address: str | None
     latitude: float
