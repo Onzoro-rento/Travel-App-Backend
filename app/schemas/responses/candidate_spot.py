@@ -28,10 +28,10 @@ class CandidateSpotListItemResponse(BaseModel):
     """GET /trips/:tripId/candidates の data[] 各要素"""
     id: UUID
     spot: SpotResponse
-    added_by: AddedByResponse
+    added_by: AddedByResponse | None
     status: str
     reactions_summary: dict[str, int]
-    my_reaction: str | None
+    my_reaction: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
