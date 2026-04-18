@@ -8,6 +8,9 @@ class AppException(Exception):
     error_code: str = "INTERNAL_ERROR"
     details: list[dict] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        super().__init__(self.message)
+
 
 @dataclass
 class NotFoundException(AppException):

@@ -23,7 +23,7 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     details = [
         {
-            "field": ".".join(str(loc) for loc in error["loc"] if loc != "body"),
+            "field": ".".join(str(loc) for loc in error["loc"][1:]),
             "reason": error["msg"],
         }
         for error in exc.errors()
