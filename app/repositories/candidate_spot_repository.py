@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,19 +55,12 @@ class CandidateSpotRepository:
         )
         reactions = reaction_rows.all()
 
-        def build_summary(candidate_id: uuid.UUID) -> dict[str, int]:
-            summary: dict[str, int] = {}
-            for r in reactions:
-                if r.candidate_spot_id == candidate_id:
-                    summary[r.emoji_type] = summary.get(r.emoji_type, 0) + r.count
-            return summary
-
-        def get_my_reactions(candidate_id: uuid.UUID) -> list[str]:
-            return [
-                r.emoji_type
-                for r in reactions
-                if r.candidate_spot_id == candidate_id and r.user_id == current_user_id
-            ]
+        summary_map: dict[uuid.UUID, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        my_reactions_map: dict[uuid.UUID, list[str]] = defaultdict(list)
+        for r in reactions:
+            summary_map[r.candidate_spot_id][r.emoji_type] += r.count
+            if r.user_id == current_user_id:
+                my_reactions_map[r.candidate_spot_id].append(r.emoji_type)
 
         items = []
         for row in rows:
@@ -75,8 +69,8 @@ class CandidateSpotRepository:
                 "candidate": candidate,
                 "spot": spot,
                 "added_by": added_by_user,
-                "reactions_summary": build_summary(candidate.id),
-                "my_reactions": get_my_reactions(candidate.id),
+                "reactions_summary": dict(summary_map[candidate.id]),
+                "my_reactions": my_reactions_map[candidate.id],
             })
         return items
 
