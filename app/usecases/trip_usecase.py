@@ -37,7 +37,9 @@ class TripUsecase:
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
-        validate_date_range(request.start_date, request.end_date)
+        effective_start = request.start_date if request.start_date is not None else trip.start_date
+        effective_end = request.end_date if request.end_date is not None else trip.end_date
+        validate_date_range(effective_start, effective_end)
         return await self.trip_repo.update(trip, request)
 
     async def delete(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:

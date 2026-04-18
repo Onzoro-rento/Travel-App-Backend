@@ -44,6 +44,8 @@ class TripMemberUsecase:
         request: TripMemberRoleUpdateRequest,
     ) -> TripMember:
         await require_role(self.member_repo, trip_id, user_id, ("owner",))
+        if target_user_id == user_id and request.role != "owner":
+            raise ForbiddenException("自分自身のowner権限を外すことはできません")
         member = await self.member_repo.find_by_trip_and_user(trip_id, target_user_id)
         if not member:
             raise NotFoundException("メンバーが見つかりません")

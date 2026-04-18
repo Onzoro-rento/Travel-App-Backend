@@ -40,6 +40,9 @@ class CandidateReactionUsecase:
         emoji_type: str,
     ) -> None:
         await require_member(self.member_repo, trip_id, user_id)
+        candidate = await self.candidate_repo.find_by_id(candidate_id)
+        if not candidate or candidate.trip_id != trip_id:
+            raise NotFoundException("候補スポットが見つかりません")
         reaction = await self.reaction_repo.find_by(candidate_id, user_id, emoji_type)
         if not reaction:
             raise NotFoundException("リアクションが見つかりません")
