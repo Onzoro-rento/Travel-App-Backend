@@ -1,4 +1,5 @@
 import uuid
+import math
 from fastapi import APIRouter, Depends, Query, status
 from app.config.jwt import get_current_user_id
 from app.config.dependency import get_trip_usecase
@@ -26,7 +27,6 @@ async def list_trips(
     usecase: TripUsecase = Depends(get_trip_usecase),
 ):
     items, total = await usecase.get_list(current_user_id, page, per_page)
-    import math
     return {
         "data": items,
         "pagination": {

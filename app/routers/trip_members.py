@@ -10,9 +10,8 @@ from app.schemas.responses.trip_member import TripMemberResponse
 router = APIRouter(prefix="/trips", tags=["trip_members"])
 
 
-@router.post("/{trip_id}/join", response_model=TripMemberResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/join", response_model=TripMemberResponse, status_code=status.HTTP_201_CREATED)
 async def join_trip(
-    trip_id: uuid.UUID,
     request: TripJoinRequest,
     current_user_id: uuid.UUID = Depends(get_current_user_id),
     usecase: TripMemberUsecase = Depends(get_trip_member_usecase),

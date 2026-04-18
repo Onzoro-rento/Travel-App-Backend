@@ -29,11 +29,11 @@ async def add_candidate(
 @router.get("/{trip_id}/candidates", response_model=CandidateSpotListResponse)
 async def list_candidates(
     trip_id: uuid.UUID,
-    status: str | None = Query(default=None),
+    candidate_status: str | None = Query(default=None,alias="status"),
     current_user_id: uuid.UUID = Depends(get_current_user_id),
     usecase: CandidateSpotUsecase = Depends(get_candidate_spot_usecase),
 ):
-    items = await usecase.get_list(trip_id, current_user_id, status)
+    items = await usecase.get_list(trip_id, current_user_id, candidate_status)
     return {"data": items}
 
 
