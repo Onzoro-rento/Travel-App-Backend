@@ -1,20 +1,11 @@
-import os
+from typing import AsyncGenerator
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from typing import AsyncGenerator
+from app.config.env import settings
 
 Base = declarative_base()
 
-# 非同期用の asyncpg を指定
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://myuser:mypassword@db:5432/travel_app_db",
-)
-
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
-)
+engine = create_async_engine(settings.DATABASE_URL, echo=settings.SQL_ECHO)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 

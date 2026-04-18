@@ -1,35 +1,28 @@
 from contextlib import asynccontextmanager
-from app.infrastructure.database import init_db, engine
-import app.models  # noqa: F401 — モデルを Base.metadata に登録するために必要
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from app.infrastructure.database import init_db, engine
+import app.models  # noqa: F401
 from app.exceptions.app_exceptions import AppException
 from app.exceptions.handlers import app_exception_handler, validation_exception_handler
+from app.routers import users, trips, trip_members, candidates, reactions, itinerary
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ① 【起動時】お店を開ける前の準備（yield の前）
-    print("アプリケーションの起動処理を開始...")
-    await init_db()  # ← DBのテーブルを作成したり、接続の準備をする
-
-    yield  # ② 【営業中】ここでAPIサーバーが立ち上がり、ユーザーからのアクセスを受け付け始める！
-    
-    # ③ 【終了時】サーバーを停止したときの片付け（yield の後）
-    print("シャットダウンします。DBの接続を閉じます...")
+    await init_db()
+    yield
     await engine.dispose()
 
 
 app = FastAPI(lifespan=lifespan)
+
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(trips.router, prefix="/api/v1")
+app.include_router(trip_members.router, prefix="/api/v1")
+app.include_router(candidates.router, prefix="/api/v1")
+app.include_router(reactions.router, prefix="/api/v1")
+app.include_router(itinerary.router, prefix="/api/v1")
