@@ -16,7 +16,8 @@ async def get_current_user_id(
             credentials.credentials,
             settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
-            options={"verify_aud": False},
+            audience="authenticated",
+            issuer=f"{settings.SUPABASE_URL}/auth/v1",
         )
         return uuid.UUID(payload["sub"])
     except (jwt.InvalidTokenError, KeyError, ValueError):

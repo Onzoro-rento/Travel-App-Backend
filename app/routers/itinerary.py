@@ -36,6 +36,17 @@ async def add_activity(
     return await usecase.add_activity(trip_id, current_user_id, request)
 
 
+@router.patch("/{trip_id}/itinerary/reorder", response_model=ReorderResponse)
+async def reorder_activities(
+    trip_id: uuid.UUID,
+    request: ActivityReorderRequest,
+    current_user_id: uuid.UUID = Depends(get_current_user_id),
+    usecase: ItineraryUsecase = Depends(get_itinerary_usecase),
+):
+    updated_count = await usecase.reorder(trip_id, current_user_id, request)
+    return {"updated_count": updated_count}
+
+
 @router.patch("/{trip_id}/itinerary/{activity_id}", response_model=ActivityResponse)
 async def update_activity(
     trip_id: uuid.UUID,
@@ -55,14 +66,3 @@ async def delete_activity(
     usecase: ItineraryUsecase = Depends(get_itinerary_usecase),
 ):
     await usecase.delete_activity(trip_id, activity_id, current_user_id)
-
-
-@router.patch("/{trip_id}/itinerary/reorder", response_model=ReorderResponse)
-async def reorder_activities(
-    trip_id: uuid.UUID,
-    request: ActivityReorderRequest,
-    current_user_id: uuid.UUID = Depends(get_current_user_id),
-    usecase: ItineraryUsecase = Depends(get_itinerary_usecase),
-):
-    updated_count = await usecase.reorder(trip_id, current_user_id, request)
-    return {"updated_count": updated_count}

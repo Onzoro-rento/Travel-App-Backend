@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SQL_ECHO: bool = False
     SUPABASE_JWT_SECRET: str
+    SUPABASE_URL: str = "https://your-project-ref.supabase.co"
     GOOGLE_PLACES_API_KEY: str = ""
 
 
