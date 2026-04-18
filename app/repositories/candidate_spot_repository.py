@@ -61,11 +61,12 @@ class CandidateSpotRepository:
                     summary[r.emoji_type] = summary.get(r.emoji_type, 0) + r.count
             return summary
 
-        def get_my_reaction(candidate_id: uuid.UUID) -> str | None:
-            for r in reactions:
-                if r.candidate_spot_id == candidate_id and r.user_id == current_user_id:
-                    return r.emoji_type
-            return None
+        def get_my_reactions(candidate_id: uuid.UUID) -> list[str]:
+            return [
+                r.emoji_type
+                for r in reactions
+                if r.candidate_spot_id == candidate_id and r.user_id == current_user_id
+            ]
 
         items = []
         for row in rows:
@@ -75,7 +76,7 @@ class CandidateSpotRepository:
                 "spot": spot,
                 "added_by": added_by_user,
                 "reactions_summary": build_summary(candidate.id),
-                "my_reaction": get_my_reaction(candidate.id),
+                "my_reactions": get_my_reactions(candidate.id),
             })
         return items
 

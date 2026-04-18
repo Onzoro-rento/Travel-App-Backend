@@ -1,10 +1,19 @@
+import secrets
+import string
 import uuid
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.trip import Trip
 from app.models.trip_member import TripMember
 from app.schemas.requests.trip import TripCreateRequest, TripUpdateRequest
+
+_INVITE_CODE_CHARS = string.ascii_uppercase + string.digits
+
+
+def _generate_invite_code() -> str:
+    return "".join(secrets.choice(_INVITE_CODE_CHARS) for _ in range(12))
 
 
 class TripRepository:
@@ -40,24 +49,34 @@ class TripRepository:
         rows = await self.db.execute(stmt.offset((page - 1) * per_page).limit(per_page))
 
         items = [
-            {**row.Trip.__dict__, "my_role": row.role, "member_count": row.member_count}
+            {
+                "id": row.Trip.id,
+                "title": row.Trip.title,
+                "cover_photo_url": row.Trip.cover_photo_url,
+                "start_date": row.Trip.start_date,
+                "end_date": row.Trip.end_date,
+                "my_role": row.role,
+                "member_count": row.member_count,
+            }
             for row in rows
         ]
         return items, total
 
     async def create(self, request: TripCreateRequest, owner_id: uuid.UUID) -> Trip:
-        trip = Trip(
-            **request.model_dump(),
-            invite_code=str(uuid.uuid4())[:8].upper(),
-        )
-        self.db.add(trip)
-        await self.db.flush()  # IDを確定させてからmemberを追加
+        for _ in range(3):
+            try:
+                trip = Trip(**request.model_dump(), invite_code=_generate_invite_code())
+                self.db.add(trip)
+                await self.db.flush()
 
-        member = TripMember(trip_id=trip.id, user_id=owner_id, role="owner")
-        self.db.add(member)
-        await self.db.commit()
-        await self.db.refresh(trip)
-        return trip
+                member = TripMember(trip_id=trip.id, user_id=owner_id, role="owner")
+                self.db.add(member)
+                await self.db.commit()
+                await self.db.refresh(trip)
+                return trip
+            except IntegrityError:
+                await self.db.rollback()
+        raise RuntimeError("invite_code の生成に3回失敗しました")
 
     async def update(self, trip: Trip, request: TripUpdateRequest) -> Trip:
         for key, value in request.model_dump(exclude_unset=True).items():
