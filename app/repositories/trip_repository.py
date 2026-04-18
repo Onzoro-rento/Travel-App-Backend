@@ -20,6 +20,12 @@ class TripRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def find_by_invite_code(self, invite_code: str) -> Trip | None:
+        result = await self.db.execute(
+            select(Trip).where(Trip.invite_code == invite_code)
+        )
+        return result.scalar_one_or_none()
+
     async def find_by_id(self, trip_id: uuid.UUID) -> Trip | None:
         result = await self.db.execute(
             select(Trip).where(Trip.id == trip_id)
