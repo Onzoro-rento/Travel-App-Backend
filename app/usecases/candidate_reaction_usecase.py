@@ -5,6 +5,7 @@ from app.repositories.trip_member_repository import TripMemberRepository
 from app.schemas.requests.candidate_reaction import CandidateReactionUpsertRequest
 from app.models.candidate_reaction import CandidateReaction
 from app.exceptions.app_exceptions import NotFoundException
+from app.usecases.permissions import require_member
 
 
 class CandidateReactionUsecase:
@@ -25,7 +26,7 @@ class CandidateReactionUsecase:
         user_id: uuid.UUID,
         request: CandidateReactionUpsertRequest,
     ) -> CandidateReaction:
-        await self._require_member(trip_id, user_id)
+        await require_member(self.member_repo, trip_id, user_id)
         candidate = await self.candidate_repo.find_by_id(candidate_id)
         if not candidate or candidate.trip_id != trip_id:
             raise NotFoundException("候補スポットが見つかりません")
@@ -38,13 +39,8 @@ class CandidateReactionUsecase:
         user_id: uuid.UUID,
         emoji_type: str,
     ) -> None:
-        await self._require_member(trip_id, user_id)
+        await require_member(self.member_repo, trip_id, user_id)
         reaction = await self.reaction_repo.find_by(candidate_id, user_id, emoji_type)
         if not reaction:
             raise NotFoundException("リアクションが見つかりません")
         await self.reaction_repo.delete(reaction)
-
-    async def _require_member(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")

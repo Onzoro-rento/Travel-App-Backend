@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from app.repositories.itinerary_activity_repository import ItineraryActivityRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_member_repository import TripMemberRepository
@@ -9,7 +9,8 @@ from app.schemas.requests.itinerary import (
     ActivityReorderRequest,
 )
 from app.models.itinerary_activity import ItineraryActivity
-from app.exceptions.app_exceptions import NotFoundException, ForbiddenException
+from app.exceptions.app_exceptions import NotFoundException
+from app.usecases.permissions import require_member, require_role
 
 
 class ItineraryUsecase:
@@ -24,7 +25,7 @@ class ItineraryUsecase:
         self.member_repo = trip_member_repository
 
     async def get_itinerary(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> dict:
-        await self._require_member(trip_id, user_id)
+        await require_member(self.member_repo, trip_id, user_id)
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
@@ -37,7 +38,6 @@ class ItineraryUsecase:
             if day_num not in days:
                 date_val: date | None = None
                 if trip.start_date:
-                    from datetime import timedelta
                     date_val = trip.start_date + timedelta(days=day_num - 1)
                 days[day_num] = {"day_number": day_num, "date": date_val, "activities": []}
             days[day_num]["activities"].append({"activity": activity, "spot": spot})
@@ -47,7 +47,7 @@ class ItineraryUsecase:
     async def add_activity(
         self, trip_id: uuid.UUID, user_id: uuid.UUID, request: ActivityCreateRequest
     ) -> ItineraryActivity:
-        await self._require_role(trip_id, user_id, ("owner", "editor"))
+        await require_role(self.member_repo, trip_id, user_id, ("owner", "editor"))
         return await self.itinerary_repo.create(trip_id, request)
 
     async def update_activity(
@@ -57,7 +57,7 @@ class ItineraryUsecase:
         user_id: uuid.UUID,
         request: ActivityUpdateRequest,
     ) -> ItineraryActivity:
-        await self._require_role(trip_id, user_id, ("owner", "editor"))
+        await require_role(self.member_repo, trip_id, user_id, ("owner", "editor"))
         activity = await self.itinerary_repo.find_by_id(activity_id)
         if not activity or activity.trip_id != trip_id:
             raise NotFoundException("アクティビティが見つかりません")
@@ -66,7 +66,7 @@ class ItineraryUsecase:
     async def delete_activity(
         self, trip_id: uuid.UUID, activity_id: uuid.UUID, user_id: uuid.UUID
     ) -> None:
-        await self._require_role(trip_id, user_id, ("owner", "editor"))
+        await require_role(self.member_repo, trip_id, user_id, ("owner", "editor"))
         activity = await self.itinerary_repo.find_by_id(activity_id)
         if not activity or activity.trip_id != trip_id:
             raise NotFoundException("アクティビティが見つかりません")
@@ -75,19 +75,5 @@ class ItineraryUsecase:
     async def reorder(
         self, trip_id: uuid.UUID, user_id: uuid.UUID, request: ActivityReorderRequest
     ) -> int:
-        await self._require_role(trip_id, user_id, ("owner", "editor"))
+        await require_role(self.member_repo, trip_id, user_id, ("owner", "editor"))
         return await self.itinerary_repo.bulk_update_order(request.operations)
-
-    async def _require_member(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-
-    async def _require_role(
-        self, trip_id: uuid.UUID, user_id: uuid.UUID, roles: tuple
-    ) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-        if member.role not in roles:
-            raise ForbiddenException()

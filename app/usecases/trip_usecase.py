@@ -3,11 +3,8 @@ from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_member_repository import TripMemberRepository
 from app.schemas.requests.trip import TripCreateRequest, TripUpdateRequest
 from app.models.trip import Trip
-from app.exceptions.app_exceptions import (
-    NotFoundException,
-    ForbiddenException,
-    InvalidDateRangeException,
-)
+from app.exceptions.app_exceptions import NotFoundException
+from app.usecases.permissions import require_member, require_role, validate_date_range
 
 
 class TripUsecase:
@@ -20,16 +17,14 @@ class TripUsecase:
         self.member_repo = trip_member_repository
 
     async def create(self, request: TripCreateRequest, owner_id: uuid.UUID) -> Trip:
-        if request.start_date and request.end_date:
-            if request.start_date > request.end_date:
-                raise InvalidDateRangeException()
+        validate_date_range(request.start_date, request.end_date)
         return await self.trip_repo.create(request, owner_id)
 
     async def get_list(self, user_id: uuid.UUID, page: int, per_page: int) -> tuple[list[dict], int]:
         return await self.trip_repo.find_all_by_user_id(user_id, page, per_page)
 
     async def get_detail(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> Trip:
-        await self._require_member(trip_id, user_id)
+        await require_member(self.member_repo, trip_id, user_id)
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
@@ -38,32 +33,16 @@ class TripUsecase:
     async def update(
         self, trip_id: uuid.UUID, user_id: uuid.UUID, request: TripUpdateRequest
     ) -> Trip:
-        await self._require_role(trip_id, user_id, ("owner", "editor"))
+        await require_role(self.member_repo, trip_id, user_id, ("owner", "editor"))
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
-        if request.start_date and request.end_date:
-            if request.start_date > request.end_date:
-                raise InvalidDateRangeException()
+        validate_date_range(request.start_date, request.end_date)
         return await self.trip_repo.update(trip, request)
 
     async def delete(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        await self._require_role(trip_id, user_id, ("owner",))
+        await require_role(self.member_repo, trip_id, user_id, ("owner",))
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
         await self.trip_repo.delete(trip)
-
-    async def _require_member(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-
-    async def _require_role(
-        self, trip_id: uuid.UUID, user_id: uuid.UUID, roles: tuple
-    ) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-        if member.role not in roles:
-            raise ForbiddenException()

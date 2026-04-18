@@ -9,6 +9,7 @@ from app.exceptions.app_exceptions import (
     AlreadyMemberException,
     InvalidInviteCodeException,
 )
+from app.usecases.permissions import require_member, require_role
 
 
 class TripMemberUsecase:
@@ -32,7 +33,7 @@ class TripMemberUsecase:
         return await self.member_repo.create(trip.id, user_id, "editor")
 
     async def get_members(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> list:
-        await self._require_member(trip_id, user_id)
+        await require_member(self.member_repo, trip_id, user_id)
         return await self.member_repo.find_all_by_trip_id(trip_id)
 
     async def update_role(
@@ -42,7 +43,7 @@ class TripMemberUsecase:
         user_id: uuid.UUID,
         request: TripMemberRoleUpdateRequest,
     ) -> TripMember:
-        await self._require_role(trip_id, user_id, ("owner",))
+        await require_role(self.member_repo, trip_id, user_id, ("owner",))
         member = await self.member_repo.find_by_trip_and_user(trip_id, target_user_id)
         if not member:
             raise NotFoundException("メンバーが見つかりません")
@@ -51,24 +52,10 @@ class TripMemberUsecase:
     async def remove(
         self, trip_id: uuid.UUID, target_user_id: uuid.UUID, user_id: uuid.UUID
     ) -> None:
-        await self._require_role(trip_id, user_id, ("owner",))
+        await require_role(self.member_repo, trip_id, user_id, ("owner",))
         if target_user_id == user_id:
             raise ForbiddenException("自分自身を削除することはできません")
         member = await self.member_repo.find_by_trip_and_user(trip_id, target_user_id)
         if not member:
             raise NotFoundException("メンバーが見つかりません")
         await self.member_repo.delete(member)
-
-    async def _require_member(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-
-    async def _require_role(
-        self, trip_id: uuid.UUID, user_id: uuid.UUID, roles: tuple
-    ) -> None:
-        member = await self.member_repo.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise NotFoundException("旅行が見つかりません")
-        if member.role not in roles:
-            raise ForbiddenException()
