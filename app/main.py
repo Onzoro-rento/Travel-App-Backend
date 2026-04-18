@@ -2,6 +2,9 @@ from contextlib import asynccontextmanager
 from app.infrastructure.database import init_db, engine
 import app.models  # noqa: F401 — モデルを Base.metadata に登録するために必要
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from app.exceptions.app_exceptions import AppException
+from app.exceptions.handlers import app_exception_handler, validation_exception_handler
 
 
 @asynccontextmanager
@@ -18,6 +21,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/")
