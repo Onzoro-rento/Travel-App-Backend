@@ -31,7 +31,7 @@ class CandidateSpotListItemResponse(BaseModel):
     added_by: AddedByResponse | None
     status: str
     reactions_summary: dict[str, int]
-    my_reaction: str | None = None
+    my_reactions: list[str] = Field(default_factory=list)
     created_at: datetime
 
     model_config = {"from_attributes": True}
