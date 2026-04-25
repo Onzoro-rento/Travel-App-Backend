@@ -9,6 +9,12 @@ build:
 # アプリとDBの起動
 up:
 	docker compose up -d
+	@echo ""
+	@echo "起動しました"
+	@echo "  API:     http://localhost:$(PORT)"
+	@echo "  Swagger: http://localhost:$(PORT)/docs"
+	@echo ""
+	
 
 # アプリとDBの停止・削除
 down:
