@@ -30,7 +30,7 @@ class ItineraryActivityRepository:
             .where(ItineraryActivity.trip_id == trip_id)
             .order_by(ItineraryActivity.day_number, ItineraryActivity.sort_order)
         )
-        return result.all()
+        return list(result.tuples().all())
 
     async def create(
         self, trip_id: uuid.UUID, request: ActivityCreateRequest

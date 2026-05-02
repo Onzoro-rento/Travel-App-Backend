@@ -29,7 +29,7 @@ class TripMemberRepository:
             .join(User, User.id == TripMember.user_id)
             .where(TripMember.trip_id == trip_id)
         )
-        return result.all()
+        return list(result.tuples().all())
 
     async def create(
         self, trip_id: uuid.UUID, user_id: uuid.UUID, role: str

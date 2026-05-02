@@ -1,7 +1,9 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.infrastructure.database import Base
@@ -15,18 +17,16 @@ class CandidateReaction(Base):
         UniqueConstraint("candidate_spot_id", "user_id", "emoji_type", name="uq_reaction"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    candidate_spot_id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_spot_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("candidate_spots.id", ondelete="CASCADE"),
-        nullable=False,
     )
-    user_id = Column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
     )
-    emoji_type = Column(String(20), nullable=False)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+    emoji_type: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
