@@ -29,8 +29,10 @@ class UserRepository:
         if user is None:
             # 並行リクエストによる衝突 → 既存行を取得
             user = await self.find_by_id(id)
+            if user is None:
+                raise RuntimeError(f"User {id} not found after conflict on upsert")
         await self.db.commit()
-        return user  # type: ignore[return-value]
+        return user
 
     async def create(self, id: uuid.UUID, email: str, name: str, avatar_url: str | None) -> User:
         user = User(id=id, email=email, name=name, avatar_url=avatar_url)

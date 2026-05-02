@@ -6,6 +6,7 @@ from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config.env import settings
 from app.exceptions.app_exceptions import UnauthorizedException
+import asyncio
 
 #APIのAuthorizationHeaderにBearerトークンを要求するオブジェクト
 #これをするだけでSwaggerに Authorize ボタンが自動で表示される
@@ -27,7 +28,7 @@ class UserTokenInfo:
 
 
 async def preload_jwks() -> None:
-    _jwks_client.get_jwk_set(refresh=True)
+    await asyncio.to_thread(_jwks_client.get_jwk_set,refresh=True)
 
 
 def _decode_payload(token: str) -> dict:
