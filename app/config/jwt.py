@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config.env import settings
 from app.exceptions.app_exceptions import UnauthorizedException
 
-#APIのAuhthorizationHeaderにBearerトークンを要求するオブジェクト
+#APIのAuthorizationHeaderにBearerトークンを要求するオブジェクト
 #これをするだけでSwaggerに Authorize ボタンが自動で表示される
 # リクエストが来たときに Authorization: Bearer <token> ヘッダーを取り出す役割も担う
 _bearer = HTTPBearer()
@@ -24,6 +24,10 @@ class UserTokenInfo:
     email: str
     name: str
     avatar_url: str | None
+
+
+async def preload_jwks() -> None:
+    _jwks_client.get_jwk_set(refresh=True)
 
 
 def _decode_payload(token: str) -> dict:
@@ -48,8 +52,8 @@ async def get_current_user_id(
         payload = _decode_payload(credentials.credentials)
         #sub（subject）がSupabaseのユーザーIDを返す
         return uuid.UUID(payload["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
-        raise UnauthorizedException()
+    except (jwt.InvalidTokenError, KeyError, ValueError) as e:
+        raise UnauthorizedException() from e 
 
 
 async def get_current_user_info(
@@ -62,6 +66,8 @@ async def get_current_user_info(
         payload = _decode_payload(credentials.credentials)
         meta = payload.get("user_metadata", {})
         email = payload["email"]
+        if not email:
+            raise UnauthorizedException()
         # Google認証: user_metadata.full_name / Email認証: nameがないのでemailの@前を使う
         name = meta.get("full_name") or email.split("@")[0]
         # Google認証: Googleのプロフィール画像URL / Email認証: None
@@ -72,5 +78,5 @@ async def get_current_user_info(
             name=name,
             avatar_url=avatar_url,
         )
-    except (jwt.InvalidTokenError, KeyError, ValueError):
-        raise UnauthorizedException()
+    except (jwt.InvalidTokenError, KeyError, ValueError) as e:
+        raise UnauthorizedException() from e

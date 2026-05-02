@@ -11,16 +11,12 @@ class UserUsecase:
         self.repository = repository
 
     async def get_me(self, user_info: UserTokenInfo) -> User:
-        user = await self.repository.find_by_id(user_info.id)
-        if not user:
-            # 初回ログイン時にJWTの情報からユーザーを自動作成する
-            user = await self.repository.create(
-                id=user_info.id,
-                email=user_info.email,
-                name=user_info.name,
-                avatar_url=user_info.avatar_url,
-            )
-        return user
+        return await self.repository.upsert(
+            id=user_info.id,
+            email=user_info.email,
+            name=user_info.name,
+            avatar_url=user_info.avatar_url,
+        )
 
     async def update_me(self, user_id: uuid.UUID, request: UserUpdateRequest) -> User:
         user = await self.repository.find_by_id(user_id)
