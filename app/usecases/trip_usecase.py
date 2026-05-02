@@ -2,6 +2,8 @@ import uuid
 from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_member_repository import TripMemberRepository
 from app.schemas.requests.trip import TripCreateRequest, TripUpdateRequest
+from app.schemas.responses.trip import TripDetailResponse
+from app.schemas.responses.trip_member import TripMemberDetailResponse
 from app.models.trip import Trip
 from app.exceptions.app_exceptions import NotFoundException
 from app.usecases.permissions import require_member, require_role, validate_date_range
@@ -23,12 +25,31 @@ class TripUsecase:
     async def get_list(self, user_id: uuid.UUID, page: int, per_page: int) -> tuple[list[dict], int]:
         return await self.trip_repo.find_all_by_user_id(user_id, page, per_page)
 
-    async def get_detail(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> Trip:
+    async def get_detail(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> TripDetailResponse:
         await require_member(self.member_repo, trip_id, user_id)
         trip = await self.trip_repo.find_by_id(trip_id)
         if not trip:
             raise NotFoundException("旅行が見つかりません")
-        return trip
+        members_with_users = await self.member_repo.find_all_by_trip_id(trip_id)
+        return TripDetailResponse(
+            id=trip.id,
+            title=trip.title,
+            cover_photo_url=trip.cover_photo_url,
+            start_date=trip.start_date,
+            end_date=trip.end_date,
+            invite_code=trip.invite_code,
+            members=[
+                TripMemberDetailResponse(
+                    user_id=member.user_id,
+                    name=user.name,
+                    avatar_url=user.avatar_url,
+                    role=member.role,
+                )
+                for member, user in members_with_users
+            ],
+            created_at=trip.created_at,
+            updated_at=trip.updated_at,
+        )
 
     async def update(
         self, trip_id: uuid.UUID, user_id: uuid.UUID, request: TripUpdateRequest

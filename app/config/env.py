@@ -11,4 +11,4 @@ class Settings(BaseSettings):
     GOOGLE_PLACES_API_KEY: str = ""
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

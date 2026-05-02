@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -15,6 +16,30 @@ class UserRepository:
             select(User).where(User.id == user_id)
         )
         return result.scalar_one_or_none()
+
+    async def upsert(self, id: uuid.UUID, email: str, name: str, avatar_url: str | None) -> User:
+        stmt = (
+            insert(User)
+            .values(id=id, email=email, name=name, avatar_url=avatar_url)
+            .on_conflict_do_nothing(index_elements=["id"])
+            .returning(User)
+        )
+        result = await self.db.execute(stmt)
+        user = result.scalar_one_or_none()
+        if user is None:
+            # 並行リクエストによる衝突 → 既存行を取得
+            user = await self.find_by_id(id)
+            if user is None:
+                raise RuntimeError(f"User {id} not found after conflict on upsert")
+        await self.db.commit()
+        return user
+
+    async def create(self, id: uuid.UUID, email: str, name: str, avatar_url: str | None) -> User:
+        user = User(id=id, email=email, name=name, avatar_url=avatar_url)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
 
     async def update(self, user: User, request: UserUpdateRequest) -> User:
         for key, value in request.model_dump(exclude_unset=True).items():

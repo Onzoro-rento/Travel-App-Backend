@@ -1,5 +1,9 @@
-from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, String
+import uuid
+from datetime import datetime
+
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.infrastructure.database import Base
@@ -15,20 +19,15 @@ class TripMember(Base):
         ),
     )
 
-    # 複合主キー: (trip_id, user_id)
-    trip_id = Column(
+    trip_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("trips.id", ondelete="CASCADE"),
         primary_key=True,
-        nullable=False,
     )
-    user_id = Column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
-        nullable=False,
     )
-    role = Column(String(20), nullable=False)  # owner / editor / viewer
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    role: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -42,7 +42,7 @@ class CandidateSpotRepository:
                 CandidateReaction.candidate_spot_id,
                 CandidateReaction.emoji_type,
                 CandidateReaction.user_id,
-                func.count().label("count"),
+                func.count().label("cnt"),
             )
             .where(CandidateReaction.candidate_spot_id.in_(
                 select(CandidateSpot.id).where(CandidateSpot.trip_id == trip_id)
@@ -58,7 +58,7 @@ class CandidateSpotRepository:
         summary_map: dict[uuid.UUID, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         my_reactions_map: dict[uuid.UUID, list[str]] = defaultdict(list)
         for r in reactions:
-            summary_map[r.candidate_spot_id][r.emoji_type] += r.count
+            summary_map[r.candidate_spot_id][r.emoji_type] += r.cnt
             if r.user_id == current_user_id:
                 my_reactions_map[r.candidate_spot_id].append(r.emoji_type)
 

@@ -66,7 +66,7 @@ class TripRepository:
             }
             for row in rows
         ]
-        return items, total
+        return items, total or 0
 
     async def create(self, request: TripCreateRequest, owner_id: uuid.UUID) -> Trip:
         for _ in range(3):
