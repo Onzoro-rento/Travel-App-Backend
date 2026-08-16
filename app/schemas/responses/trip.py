@@ -12,6 +12,7 @@ class TripResponse(BaseModel):
     end_date: date | None
     invite_code: str | None
     created_at: datetime
+    
 
     model_config = {"from_attributes": True}
 
@@ -26,6 +27,7 @@ class TripDetailResponse(BaseModel):
     members: list[TripMemberDetailResponse]
     created_at: datetime
     updated_at: datetime
+    note:str | None
 
     model_config = {"from_attributes": True}
 
@@ -38,7 +40,7 @@ class TripListItemResponse(BaseModel):
     end_date: date | None
     my_role: str
     member_count: int
-
+    note:str | None
     model_config = {"from_attributes": True}
 
 

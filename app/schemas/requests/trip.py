@@ -8,6 +8,7 @@ class TripCreateRequest(BaseModel):
     cover_photo_url: str | None = Field(default=None)
     start_date: date | None = Field(default=None)
     end_date: date | None = Field(default=None)
+    note: str|None = Field(default=None)
 
     @model_validator(mode="after")
     def validate_date_range(self):
@@ -22,6 +23,8 @@ class TripUpdateRequest(BaseModel):
     cover_photo_url: str | None = Field(default=None)
     start_date: date | None = Field(default=None)
     end_date: date | None = Field(default=None)
+    note: str|None = Field(default=None)
+
 
     @model_validator(mode="after")
     def validate_date_range(self):

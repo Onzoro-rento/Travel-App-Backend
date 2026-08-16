@@ -47,6 +47,7 @@ class TripUsecase:
                 )
                 for member, user in members_with_users
             ],
+            note=trip.note,
             created_at=trip.created_at,
             updated_at=trip.updated_at,
         )

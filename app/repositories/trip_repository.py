@@ -63,6 +63,7 @@ class TripRepository:
                 "end_date": row.Trip.end_date,
                 "my_role": row.role,
                 "member_count": row.member_count,
+                "note": row.Trip.note,
             }
             for row in rows
         ]
